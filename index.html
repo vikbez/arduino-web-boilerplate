@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Arduino web interface boilerplate</title>
+</head>
+
+<body>
+<h3>Toggle arduino led</h3>
+
+<input type="button" value="On" onclick="ledOn();"/>
+<input type="button" value="Off" onclick="ledOff();"/>
+
+<script>
+    var ipAddress = "localhost";
+    var ipPort = "9000";
+
+    var inputMode = "0";
+    var outputMode = "1";
+    var analogMode = "2";
+    var pwmMode = "3";
+
+    var socket;
+
+    // send/receive arduino commands, see this link for reference
+    // https://github.com/MrYsLab/pymata-aio/wiki/JSON-API-for-pymata_iot
+    function ASend(method, params) {
+        socket.send(JSON.stringify({"method": method, "params": params}));
+    }
+
+    function ARecv(method, params) {
+        // interact with arduino responses here
+        console.log(method, params);
+    }
+
+    // setup arduino pins
+    function setupArduino() {
+        // Uncomment this to receive read data from Analog pin 0
+        // ASend("set_pin_mode", ['0', analogMode]);
+
+        // setting led pin to output mode
+        ASend("set_pin_mode", ["13", outputMode]);
+    }
+
+    function connectSocket() {
+        socket = new WebSocket('ws://' + ipAddress + ':' + ipPort);
+
+        socket.onopen = function (event) {
+            setupArduino();
+            console.log('Connected to Arduino');
+        };
+
+        socket.onclose = function (event) {
+            console.log('Connection closed - Reconnecting ...');
+            window.setTimeout(connectSocket, 2000);
+        };
+
+        socket.onmessage = function (message) {
+            var msg = JSON.parse(message.data);
+            ARecv(msg.method, msg.params);
+        };
+    }
+
+    connectSocket();
+
+    // turn the arduino led on or off
+    function ledOn() {
+        ASend("digital_write", ["13", "1"]);
+    }
+
+    function ledOff() {
+        ASend("digital_write", ["13", "0"]);
+    }
+
+</script>
+
+</body>
+</html>
